@@ -9,36 +9,68 @@ on:
         required: false
         default: 'false'
 
+env:
+  REPO_URL: https://github.com/gdy666/luci-app-lucky
+  REPO_BRANCH: main
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: .config
+  DIY_P1_SH: diy-part1.sh
+  DIY_P2_SH: diy-part2.sh
+  UPLOAD_BIN_DIR: true
+  UPLOAD_FIRMWARE: false
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_WETRANSFER: false
+  UPLOAD_RELEASE: false
+  TZ: Asia/Shanghai
+
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-20.04
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@main
 
-    - name: Install dependencies
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk git ccache gettext libssl-dev xsltproc wget unzip python3 python3-distutils
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -y update
+        sudo -E apt-get -y install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get -y autoremove --purge
+        sudo -E apt-get -y clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
 
-    - name: Clone luci-app-lucky repository
-      run: git clone https://github.com/gdy666/luci-app-lucky
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Move luci-app-lucky to OpenWrt package directory
-      run: mv luci-app-lucky/ package/
+    - name: Load custom feeds
+      run: |
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        chmod +x $DIY_P1_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
-      run: |
-        cd package/luci-app-lucky
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+      run: cd openwrt && ./scripts/feeds update -a
 
-    - name: Compile luci-app-lucky
-      run: make package/luci-app-lucky/compile
+    - name: Install feeds
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: Compile lucky
+      run: make package/lucky/lucky/compile
 
     - name: Upload IPK artifact
       uses: actions/upload-artifact@v2
       with:
-        name: luci-app-lucky-ipk
-        path: bin/packages/*/luci-app-lucky*.ipk
+        name: lucky-ipk
+        path: bin/packages/*/lucky*.ipk
+
+      
