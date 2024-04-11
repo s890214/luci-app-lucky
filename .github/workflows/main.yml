@@ -23,7 +23,7 @@ jobs:
         sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk git ccache gettext libssl-dev xsltproc wget unzip python3 python3-distutils
 
     - name: Clone luci-app-lucky repository
-      run: git clone https://github.com/s890214/luci-app-lucky.git luci-app-lucky
+      run: git clone https://github.com/gdy666/luci-app-lucky
 
     - name: Move luci-app-lucky to OpenWrt package directory
       run: mv luci-app-lucky/ package/
