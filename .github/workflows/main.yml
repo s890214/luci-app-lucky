@@ -1,0 +1,45 @@
+name: Build luci-app-lucky
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up OpenWrt SDK
+      uses: actions/setup-openwrt@v1
+      with:
+        version: '21.02.0'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev zlib1g-dev gawk git ccache gettext libssl-dev xsltproc wget unzip python3 python3-distutils
+
+    - name: Clone luci-app-lucky repository
+      run: git clone https://github.com/s890214/luci-app-lucky.git
+
+    - name: Move luci-app-lucky to OpenWrt package directory
+      run: mv luci-app-lucky/ package/
+
+    - name: Update feeds
+      run: |
+        cd package/luci-app-lucky
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Compile luci-app-lucky
+      run: make package/luci-app-lucky/compile
+
+    - name: Upload IPK artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: luci-app-lucky-ipk
+        path: bin/packages/*/luci-app-lucky*.ipk
